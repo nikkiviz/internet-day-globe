@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>A Day in the Life of the Internet</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/scrollama"></script>
+
+</head>
+
+<body>
+
+<header>
+<h1>A Day in the Life of the Internet</h1>
+<p>Scroll to watch the internet wake up across the planet.</p>
+</header>
+
+<main>
+
+<div class="scrolly">
+
+    <!-- TEXT SIDE -->
+    <article>
+
+        <div class="step" data-time="0">
+            <h2>Midnight Somewhere</h2>
+            <p>The internet never sleeps, but activity shifts across the planet.</p>
+        </div>
+
+        <div class="step" data-time="6">
+            <h2>Europe Wakes Up</h2>
+            <p>Morning logins bring spikes in email and productivity tools.</p>
+        </div>
+
+        <div class="step" data-time="9">
+            <h2>The Workday Begins</h2>
+            <p>Work traffic peaks across multiple regions.</p>
+        </div>
+
+        <div class="step" data-time="12">
+            <h2>The Lunch Scroll</h2>
+            <p>Social media activity increases around midday.</p>
+        </div>
+
+        <div class="step" data-time="18">
+            <h2>The Global Peak</h2>
+            <p>Europe evening overlaps with US afternoon.</p>
+        </div>
+
+        <div class="step" data-time="21">
+            <h2>Streaming Hours</h2>
+            <p>Video streaming dominates evening traffic.</p>
+        </div>
+
+    </article>
+
+    <!-- GRAPHIC SIDE -->
+    <figure>
+        <div id="globe"></div>
+        <div id="clock">UTC 00:00</div>
+    </figure>
+
+</div>
+
+</main>
+
+<script src="script.js"></script>
+
+</body>
+</html>

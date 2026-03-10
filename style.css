@@ -1,0 +1,47 @@
+body {
+font-family: sans-serif;
+margin: 0;
+background: #111;
+color: white;
+}
+
+header {
+padding: 40px;
+text-align: center;
+}
+
+.scrolly {
+display: flex;
+max-width: 1200px;
+margin: auto;
+}
+
+article {
+width: 40%;
+padding: 50px;
+}
+
+.step {
+margin-bottom: 400px;
+}
+
+figure {
+position: sticky;
+top: 0;
+width: 60%;
+height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+#globe {
+width: 600px;
+height: 600px;
+}
+
+#clock {
+position: absolute;
+bottom: 40px;
+font-size: 24px;
+}
