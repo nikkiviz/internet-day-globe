@@ -1,211 +1,194 @@
-// ======================
-// SIZE + SVG SETUP
-// ======================
+const width = 900
+const height = 900
 
-const width = 600;
-const height = 600;
-
-let currentUTC = 0;
-
-const svg = d3
-  .select("#globe")
-  .append("svg")
+const canvas = d3.select("#globe")
+  .append("canvas")
   .attr("width", width)
-  .attr("height", height);
+  .attr("height", height)
+  .style("width","100%")
 
-// ======================
-// PROJECTION
-// ======================
+const context = canvas.node().getContext("2d")
 
-const projection = d3
-  .geoOrthographic()
-  .scale(280)
-  .translate([width / 2, height / 2])
-  .clipAngle(90);
+const projection = d3.geoOrthographic()
+  .scale(420)
+  .translate([width/2, height/2])
 
-const path = d3.geoPath().projection(projection);
+const path = d3.geoPath(projection, context)
 
-// ======================
-// OCEAN BACKGROUND
-// ======================
+let points = []
+let world
+let colorScale
 
-svg
-  .append("circle")
-  .attr("cx", width / 2)
-  .attr("cy", height / 2)
-  .attr("r", projection.scale())
-  .attr("fill", "#0b1d3a");
+const cx = width/2
+const cy = height/2
+const radius = projection.scale()
+const radiusSq = radius * radius
 
-// main drawing group
-const g = svg.append("g");
 
-// ======================
-// GRATICULE (LAT/LON GRID)
-// ======================
+Promise.all([
+  d3.json("data/populated places/world.geojson"),
+  d3.csv("data/carna/hostprobes_processed/carna_batch_1.csv", d => ({
+      lat:+d.lat,
+      lon:+d.lon,
+      ping:+d.ping_count
+  }))
+]).then(([worldData, cityData]) => {
 
-const graticule = d3.geoGraticule();
+  world = worldData
 
-g.append("path")
-  .datum(graticule())
-  .attr("d", path)
-  .attr("fill", "none")
-  .attr("stroke", "#333")
-  .attr("stroke-width", 0.5);
+  colorScale = d3.scaleSqrt()
+    .domain([0, d3.max(cityData,d=>d.ping)])
+    .range([0.2,1])
+const DEG2RAD = Math.PI / 180
 
-// ======================
-// INTERNET ACTIVITY MODEL
-// ======================
+points = cityData.map(d => ({
+  lon: d.lon,
+  lat: d.lat,
+  lonRad: d.lon * DEG2RAD,
+  latRad: d.lat * DEG2RAD,
+  ping: d.ping
+}))
 
-// convert longitude to local time
-function localTime(utc, lon) {
-  let offset = lon / 15;
-  let time = utc + offset;
+  startAnimation()
 
-  if (time < 0) time += 24;
-  if (time >= 24) time -= 24;
+})
 
-  return time;
+
+function drawGlobe(){
+
+  context.clearRect(0,0,width,height)
+
+  /* ocean */
+
+  context.beginPath()
+  path({type:"Sphere"})
+  context.fillStyle="#082032"
+  context.fill()
+
+  /* land */
+
+  context.beginPath()
+  path(world)
+  context.fillStyle="#12344a"
+  context.fill()
+
 }
 
-// simulate activity levels by time of day
-function activityIntensity(time) {
-  if (time < 5) return 0.2;
-  if (time < 9) return 0.5;
-  if (time < 17) return 0.6;
-  if (time < 22) return 1.0; // evening peak
-  return 0.5;
-}
 
-// ======================
-// CREATE ACTIVITY GRID
-// ======================
+function drawCities(hour){
 
-let points = [];
+  const rotation = projection.rotate()[0]
 
-for (let lat = -60; lat <= 60; lat += 10) {
-  for (let lon = -180; lon <= 180; lon += 10) {
-    points.push({ lat, lon });
+  for(const d of points){
+
+    /* ---------- FIX 1: skip far side before projection ---------- */
+
+    let lonDiff = d.lon + rotation
+
+    if(lonDiff > 180) lonDiff -= 360
+    if(lonDiff < -180) lonDiff += 360
+
+    if(Math.abs(lonDiff) > 90) continue
+
+
+    const coords = projection([d.lon,d.lat])
+    if(!coords) continue
+
+    const x = coords[0]
+    const y = coords[1]
+
+    const dx = x - cx
+    const dy = y - cy
+
+    const distSq = dx*dx + dy*dy
+
+    if(distSq > radiusSq) continue
+
+
+    /* ---------- FIX 2: remove sqrt ---------- */
+
+    const horizonFade = 1 - (distSq / radiusSq)
+
+
+    /* local time */
+
+    const local = (hour + d.lon/15 + 24) % 24
+
+    const distFromPeak = Math.abs(local - 21)
+
+
+    /* ---------- FIX 3: quantized activity ---------- */
+
+    let activity = Math.max(0, 1 - distFromPeak/8)
+    activity = Math.round(activity * 5) / 5
+
+
+    const intensity = colorScale(d.ping)
+
+    const alpha = activity * intensity * horizonFade
+
+    if(alpha < 0.03) continue
+
+    context.fillStyle = `rgba(69,215,255,${alpha})`
+
+    context.fillRect(x,y,1,1)
+
   }
+
 }
 
-// activity layer (drawn later)
-let activityLayer;
 
-// ======================
-// DRAW ACTIVITY DOTS
-// ======================
+function rotateGlobe(hour){
 
-function drawActivity() {
+  const centerLon = (21 - hour) * 15
 
-  const circles = activityLayer
-    .selectAll("circle")
-    .data(points);
+  projection.rotate([-centerLon,-15])
 
-  circles
-    .enter()
-    .append("circle")
-    .merge(circles)
-    .attr("cx", d => projection([d.lon, d.lat])[0])
-    .attr("cy", d => projection([d.lon, d.lat])[1])
-    .attr("r", d => {
-      const lt = localTime(currentUTC, d.lon);
-      return activityIntensity(lt) * 4;
-    })
-    .attr("fill", "#00ffff")
-    .attr("opacity", d => {
-      const lt = localTime(currentUTC, d.lon);
-      return activityIntensity(lt) * 0.6;
-    });
+  drawGlobe()
 
-  circles.exit().remove();
+  drawCities(hour)
+
 }
 
-// ======================
-// LOAD WORLD MAP
-// ======================
 
-d3.json("data/world.geojson").then(world => {
+function updateClock(hour){
 
-  // draw countries
-  g.selectAll(".country")
-    .data(world.features)
-    .enter()
-    .append("path")
-    .attr("class", "country")
-    .attr("d", path)
-    .attr("fill", "#1f1f1f")
-    .attr("stroke", "#555")
-    .attr("stroke-width", 0.5);
+  const h = Math.floor(hour)
+  const m = Math.floor((hour-h)*60)
 
-  // create activity layer ABOVE countries
-  activityLayer = g.append("g");
+  const hh = String(h).padStart(2,"0")
+  const mm = String(m).padStart(2,"0")
 
-  drawActivity();
+  d3.select("#clock").text(`${hh}:${mm} UTC`)
 
-});
-
-// ======================
-// UPDATE GLOBE POSITION
-// ======================
-
-function updateGlobe(utc) {
-
-  currentUTC = utc;
-
-  const rotation = -utc * 15;
-
-  projection.rotate([rotation, 0]);
-
-  g.selectAll("path").attr("d", path);
-
-  drawActivity();
-
-  d3.select("#clock")
-    .text(`UTC ${String(Math.round(utc)).padStart(2,"0")}:00`);
 }
 
-// ======================
-// SMOOTH ROTATION
-// ======================
 
-function animateToTime(targetUTC) {
+let targetHour = 0
+let currentHour = 0
 
-  const startUTC = currentUTC;
 
-  d3.transition()
-    .duration(1200)
-    .tween("rotate", () => {
+function startAnimation(){
 
-      const interpolate = d3.interpolate(startUTC, targetUTC);
+  function frame(){
 
-      return function(t) {
-        updateGlobe(interpolate(t));
-      };
+    const scroll = window.scrollY
+    const maxScroll = document.body.scrollHeight - window.innerHeight
 
-    });
+    const progress = scroll / maxScroll
+
+    targetHour = progress * 24
+
+    currentHour += (targetHour-currentHour) * 0.06
+
+    rotateGlobe(currentHour)
+
+    updateClock(currentHour)
+
+    requestAnimationFrame(frame)
+
+  }
+
+  requestAnimationFrame(frame)
+
 }
-
-// ======================
-// SCROLLAMA
-// ======================
-
-const scroller = scrollama();
-
-scroller
-  .setup({
-    step: ".step",
-    offset: 0.6
-  })
-  .onStepEnter(response => {
-
-    const utc = +response.element.dataset.time;
-
-    animateToTime(utc);
-
-  });
-
-// ======================
-// INITIAL RENDER
-// ======================
-
-updateGlobe(0);
