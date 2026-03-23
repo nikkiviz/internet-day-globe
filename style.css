@@ -1,94 +1,227 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-  /* darker page background */
-  background: #02080f;
-
+  font-family: sans-serif;
+  background: #030a11;
   color: #e6f2ff;
-}
-
-/* MAIN CONTENT CONTAINER */
-
-.layout {
-  display: flex;
-  max-width: 1400px;
-  margin: 80px auto;
-
-  /* slightly lighter than page */
-  background: #0b1c2874;
-
-  border-radius: 12px;
-
-  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-}
-
-
-/* TEXT COLUMN */
-
-.text-column {
-  width: 35%;
-  padding: 120px 60px;
-}
-
-.step {
-  margin-bottom: 500px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1 {
-  font-size: 44px;
-  margin-bottom: 80px;
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 24px;
 }
 
 h2 {
-  font-size: 28px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
 }
 
 p {
-  font-size: 18px;
-  line-height: 1.7;
+  color: rgba(230, 242, 255, 0.8);
+  margin: 0 0 16px;
 }
 
+em {
+  color: #e6f2ff;
+  font-style: italic;
+}
 
-/* GLOBE COLUMN */
+/* INTRO / OUTRO */
+.intro, .outro {
+  max-width: 1300px;
+  margin: 80px auto;
+  padding: 0 40px;
+}
 
+.credits {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(230, 242, 255, 0.1);
+  font-size: 0.85rem;
+}
+
+.credits p {
+  margin: 0 0 6px;
+}
+
+.credits a {
+  color: #9fd9ff;
+  text-decoration: none;
+}
+
+.credits a:hover {
+  text-decoration: underline;
+}
+
+/* MAIN CONTAINER
+   clip-path gives rounded corners without overflow:hidden,
+   which would break position:sticky on children */
+.main-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  background: #082335;
+  clip-path: inset(0 round 12px);
+}
+
+/* SCROLL SECTION: two-column flex
+   Default align-items:stretch lets viz-column match narrative height,
+   which is required for sticky to have room to scroll within */
+.scroll-section {
+  display: flex;
+}
+
+/* LEFT COLUMN: scrolling narrative */
+.narrative {
+  width: 40%;
+  padding: 120px 40px 300px 60px;
+  box-sizing: border-box;
+}
+
+/* Globe narrative — padding-bottom creates scroll space before transition */
+.globe-narrative {
+  padding-bottom: 80px;
+}
+
+/* Map scroll steps */
+.step {
+  margin-bottom: 300px;
+}
+
+.step.end {
+  margin-bottom: 0;
+}
+
+/* Map narrative — padding-top ensures first step isn't already past
+   its trigger when the globe→map transition completes */
+.map-narrative {
+  padding-top: 500px;
+}
+
+/* RIGHT COLUMN: sticky visualization */
 .viz-column {
-  width: 65%;
+  width: 60%;
+  padding: 0 60px 0 0;
+  box-sizing: border-box;
+}
+
+.viz-sticky {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
+/* COLOR SCALE: 52px total (38px wide + 14px left margin).
+   Clock uses padding-right: 52px so its text centers over the canvas. */
+.viz-sticky .clock,
+.final-inner .clock {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: #9fd9ff;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 7px 22px 7px calc(22px + 52px); /* right-pad shifts center left over canvas */
+  margin-bottom: 18px;
+  border: 1px solid rgba(159, 217, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(8, 30, 60, 0.6);
+}
+
+/* Row containing canvas + color scale side by side */
+.viz-row,
+.final-viz-row {
+  display: flex;
+  align-items: center; /* vertically center color scale alongside canvas */
+  width: 100%;
+}
+
+/* Canvas wrapper: positioning context for stacked canvases */
+.canvas-wrap {
+  position: relative;
+  height: 500px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Globe and map canvases: absolutely stacked inside canvas-wrap */
+#globeCanvas,
+#mapCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+#globeCanvas {
+  z-index: 2;
+}
+
+#mapCanvas {
+  z-index: 1;
+  opacity: 0;
+}
+
+/* COLOR SCALE: narrow vertical gradient legend */
+.color-scale {
+  width: 38px;
+  margin-left: 14px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
 }
 
-
-/* CLOCK */
-
-#clock {
-  font-size: 22px;
-  letter-spacing: 2px;
-  margin-bottom: 25px;
-
-  /* slightly brighter for readability */
-  color: #9fd9ff;
-
-  opacity: 0.85;
+.scale-gradient {
+  width: 10px;
+  height: 220px;
+  background: linear-gradient(to bottom, #ff0000, #ff8800, #ffee00, #00cc66, #0066ff, #001a6b);
+  border-radius: 5px;
 }
 
+.scale-label {
+  font-size: 0.6rem;
+  color: rgba(230, 242, 255, 0.45);
+  text-align: center;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 
-/* GLOBE */
+/* FINAL SECTION */
+.final-section {
+  padding: 80px 60px;
+  opacity: 0;
+}
 
-#globe {
+.final-inner {
+  max-width: 772px; /* 720px canvas + 52px color scale */
+  margin: 0 auto;
+}
+
+/* Final clock: same style, padding shifts center over canvas */
+.final-inner .clock {
+  border: 1px solid rgba(159, 217, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(8, 30, 60, 0.6);
+}
+
+/* Final canvas: flex child in final-viz-row */
+#finalCanvas {
+  flex: 1;
+  min-width: 0;
+  display: block;
   width: 100%;
-  max-width: 720px;
-  display: flex;
-  justify-content: center;
-}
-
-#globe canvas {
-  width: 100%;
-  height: auto;
 }

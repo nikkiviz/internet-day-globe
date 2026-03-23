@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A scrollytelling data visualization ("A Day in the Life of the Internet") built with vanilla D3.js and HTML Canvas. It visualizes CARNA botnet internet census data (2012) — ping counts geolocated by hour — across three animated panels.
 
+## Data Sources
+
+The hostprobes files in the carna botnet dataset: https://internetcensus2012.github.io/InternetCensus2012/download.html
+
 ## Running the Project
 
 This is a static site with no build step. Serve it with any local HTTP server (required for fetching local data files):
@@ -23,6 +27,20 @@ Raw data lives in `data/carna/hostprobes_raw/` as `.zpaq` archives (must be deco
 2. **`combine_final_carna.py`** — merges all batch CSVs in `hostprobes_processed/` into `carna_combined_final.csv`.
 
 The final file consumed by the frontend is `data/carna/hostprobes_processed/carna_combined_final.csv` with columns: `lat, lon, hour, ping_count`.
+
+## Intended Narrative Structure
+
+The page tells a story in five acts as the user scrolls:
+
+1. **Intro** — Title ("A Day in the Life of the Internet") and text introducing the CARNA botnet census. Framed as a never-before-seen "photo" of the internet. No visualization visible yet.
+
+2. **Globe reveal** — On scroll, a globe appears (animates from a small dot to full size). Layout: narrative text left, globe right. The globe is interactive (click + drag to rotate, can spin continuously) and shows data fixed at 00:00 UTC. Left text explains this is a single snapshot in time.
+
+3. **Globe → map transition** — On further scroll, the globe transitions out and a flat world map replaces it (right side). Left text introduces the time dimension and prompts the user to scroll to watch a full day.
+
+4. **Scroll-driven time animation** — Scrolling advances the map from 00:00 → 23:59 UTC hour by hour. Left side has narrative callouts at 00:00, 06:00, 12:00, and 18:00, each explaining global activity patterns (regions waking/sleeping, etc.).
+
+5. **Final autoplay** — At 23:59, the map expands to full content width and loops automatically like a GIF. Followed by a conclusion section and credits.
 
 ## Visualization Architecture
 

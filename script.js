@@ -1,194 +1,184 @@
-const width = 900
-const height = 900
+const width = 900, height = 500
 
-const canvas = d3.select("#globe")
-  .append("canvas")
-  .attr("width", width)
-  .attr("height", height)
-  .style("width","100%")
+const globeCanvas = d3.select("#globeCanvas").attr("width", width).attr("height", height)
+const mapCanvas   = d3.select("#mapCanvas").attr("width", width).attr("height", height)
+const finalCanvas = d3.select("#finalCanvas").attr("width", width).attr("height", height)
 
-const context = canvas.node().getContext("2d")
+const gCtx = globeCanvas.node().getContext("2d")
+const mCtx = mapCanvas.node().getContext("2d")
+const fCtx = finalCanvas.node().getContext("2d")
 
-const projection = d3.geoOrthographic()
-  .scale(420)
-  .translate([width/2, height/2])
+const vizSticky    = document.getElementById("vizSticky")
+const finalSection = document.getElementById("finalSection")
 
-const path = d3.geoPath(projection, context)
+let world, points, colorScale
+let rotation = [0, 0], finalHour = 0
 
-let points = []
-let world
-let colorScale
-
-const cx = width/2
-const cy = height/2
-const radius = projection.scale()
-const radiusSq = radius * radius
-
+const projG = d3.geoOrthographic().scale(240).translate([width/2, height/2])
+const projM = d3.geoNaturalEarth1().scale(170).translate([width/2, height/2])
 
 Promise.all([
   d3.json("data/populated places/world.geojson"),
-  d3.csv("data/carna/hostprobes_processed/carna_batch_1.csv", d => ({
-      lat:+d.lat,
-      lon:+d.lon,
-      ping:+d.ping_count
+  d3.csv("data/carna/hostprobes_processed/carna_combined_final.csv", d => ({
+    lat: +d.lat, lon: +d.lon, hour: +d.hour, ping: +d.ping_count
   }))
-]).then(([worldData, cityData]) => {
-
-  world = worldData
-
-  colorScale = d3.scaleSqrt()
-    .domain([0, d3.max(cityData,d=>d.ping)])
-    .range([0.2,1])
-const DEG2RAD = Math.PI / 180
-
-points = cityData.map(d => ({
-  lon: d.lon,
-  lat: d.lat,
-  lonRad: d.lon * DEG2RAD,
-  latRad: d.lat * DEG2RAD,
-  ping: d.ping
-}))
-
-  startAnimation()
-
+]).then(([w, data]) => {
+  world = w
+  const max = d3.max(data, d => d.ping)
+  points = data.map(d => ({
+    ...d,
+    intensity: Math.log10(d.ping + 1) / Math.log10(max + 1)
+  }))
+  colorScale = d3.scaleLinear()
+    .domain([0, 0.05, 0.15, 0.3, 0.6, 1])
+    .range(["#001a6b", "#0066ff", "#00cc66", "#ffee00", "#ff8800", "#ff0000"])
+  start()
 })
 
-
-function drawGlobe(){
-
-  context.clearRect(0,0,width,height)
-
-  /* ocean */
-
-  context.beginPath()
-  path({type:"Sphere"})
-  context.fillStyle="#082032"
-  context.fill()
-
-  /* land */
-
-  context.beginPath()
-  path(world)
-  context.fillStyle="#12344a"
-  context.fill()
-
+function drawMap(ctx, hour) {
+  const h = Math.min(23, Math.floor(hour))
+  ctx.clearRect(0, 0, width, height)
+  const path = d3.geoPath(projM, ctx)
+  ctx.beginPath(); path({type: "Sphere"}); ctx.fillStyle = "#081e2e"; ctx.fill()
+  ctx.beginPath(); path(world); ctx.fillStyle = "#102c3e"; ctx.fill()
+  points.forEach(d => {
+    if (d.hour !== h) return
+    const p = projM([d.lon, d.lat])
+    ctx.fillStyle = colorScale(d.intensity)
+    ctx.fillRect(p[0], p[1], 2, 2)
+  })
+  // Night shadow overlay drawn after data points
+  ctx.beginPath()
+  path(getNightCircle(hour))
+  ctx.fillStyle = 'rgba(0, 5, 20, 0.42)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(120, 160, 255, 0.25)'
+  ctx.lineWidth = 1
+  ctx.stroke()
 }
 
-
-function drawCities(hour){
-
-  const rotation = projection.rotate()[0]
-
-  for(const d of points){
-
-    /* ---------- FIX 1: skip far side before projection ---------- */
-
-    let lonDiff = d.lon + rotation
-
-    if(lonDiff > 180) lonDiff -= 360
-    if(lonDiff < -180) lonDiff += 360
-
-    if(Math.abs(lonDiff) > 90) continue
-
-
-    const coords = projection([d.lon,d.lat])
-    if(!coords) continue
-
-    const x = coords[0]
-    const y = coords[1]
-
-    const dx = x - cx
-    const dy = y - cy
-
-    const distSq = dx*dx + dy*dy
-
-    if(distSq > radiusSq) continue
-
-
-    /* ---------- FIX 2: remove sqrt ---------- */
-
-    const horizonFade = 1 - (distSq / radiusSq)
-
-
-    /* local time */
-
-    const local = (hour + d.lon/15 + 24) % 24
-
-    const distFromPeak = Math.abs(local - 21)
-
-
-    /* ---------- FIX 3: quantized activity ---------- */
-
-    let activity = Math.max(0, 1 - distFromPeak/8)
-    activity = Math.round(activity * 5) / 5
-
-
-    const intensity = colorScale(d.ping)
-
-    const alpha = activity * intensity * horizonFade
-
-    if(alpha < 0.03) continue
-
-    context.fillStyle = `rgba(69,215,255,${alpha})`
-
-    context.fillRect(x,y,1,1)
-
-  }
-
+function drawGlobe() {
+  gCtx.clearRect(0, 0, width, height)
+  projG.rotate(rotation)
+  const path = d3.geoPath(projG, gCtx)
+  gCtx.beginPath(); path({type: "Sphere"}); gCtx.fillStyle = "#081e2e"; gCtx.fill()
+  gCtx.beginPath(); path(world); gCtx.fillStyle = "#102c3e"; gCtx.fill()
+  points.forEach(d => {
+    const p = projG([d.lon, d.lat])
+    if (!p) return
+    if (d3.geoDistance([d.lon, d.lat], [-rotation[0], -rotation[1]]) > Math.PI / 2) return
+    gCtx.fillStyle = colorScale(d.intensity)
+    gCtx.fillRect(p[0], p[1], 2, 2)
+  })
+  // Night shadow overlay — globe is fixed at 00:00 UTC
+  gCtx.beginPath()
+  path(getNightCircle(0))
+  gCtx.fillStyle = 'rgba(0, 5, 20, 0.42)'
+  gCtx.fill()
+  gCtx.strokeStyle = 'rgba(120, 160, 255, 0.25)'
+  gCtx.lineWidth = 1
+  gCtx.stroke()
 }
 
+let isDragging = false
+globeCanvas.call(d3.drag()
+  .on("start", () => { isDragging = true })
+  .on("drag", e => {
+    rotation[0] += e.dx * 0.5
+    rotation[1] -= e.dy * 0.5
+  })
+  .on("end", () => { isDragging = false })
+)
 
-function rotateGlobe(hour){
-
-  const centerLon = (21 - hour) * 15
-
-  projection.rotate([-centerLon,-15])
-
-  drawGlobe()
-
-  drawCities(hour)
-
+function updateClock(id, h) {
+  const hh = Math.floor(h)
+  const mm = Math.floor((h - hh) * 60)
+  d3.select("#" + id).text(`${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} UTC`)
 }
 
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
-function updateClock(hour){
+// Smoothstep easing: smooth acceleration and deceleration at both ends
+function ease(t) { return t * t * (3 - 2 * t) }
 
-  const h = Math.floor(hour)
-  const m = Math.floor((hour-h)*60)
-
-  const hh = String(h).padStart(2,"0")
-  const mm = String(m).padStart(2,"0")
-
-  d3.select("#clock").text(`${hh}:${mm} UTC`)
-
+// Returns a GeoJSON polygon covering the night hemisphere at a given UTC hour.
+// Sun position: at UTC 12:00 the sun is over 0° lon; each hour = 15° of longitude.
+// Approximate declination of ~10° for the 2012 census period (April–May).
+function getNightCircle(hour) {
+  const sunLon = 180 - hour * 15
+  const sunLat = 10
+  const nightLon = sunLon > 0 ? sunLon - 180 : sunLon + 180
+  return d3.geoCircle().center([nightLon, -sunLat]).radius(90)()
 }
 
+function start() {
+  const globeNarrativeEl = document.querySelector(".globe-narrative")
+  const mapSteps = document.querySelectorAll(".map-narrative [data-hour]")
 
-let targetHour = 0
-let currentHour = 0
+  function frame() {
+    const gnRect = globeNarrativeEl.getBoundingClientRect()
+    const fsRect = finalSection.getBoundingClientRect()
 
+    // Globe → Map: fade starts when globe narrative bottom exits viewport top,
+    // completes 50px of scroll later (fast crossfade so map appears before
+    // the first step paragraph overshoots the 50vh trigger)
+    const globeMapT = clamp(-gnRect.bottom / 50, 0, 1)
 
-function startAnimation(){
+    // Map → Final: fade as final section scrolls into viewport
+    const mapFinalT = clamp((window.innerHeight - fsRect.top) / (window.innerHeight * 0.5), 0, 1)
 
-  function frame(){
+    // Apply smoothstep easing so transitions accelerate/decelerate naturally
+    const globeMapE  = ease(globeMapT)
+    const mapFinalE  = ease(mapFinalT)
 
-    const scroll = window.scrollY
-    const maxScroll = document.body.scrollHeight - window.innerHeight
+    globeCanvas.style("opacity", 1 - globeMapE)
+    mapCanvas.style("opacity", globeMapE)
+    vizSticky.style.opacity = 1 - mapFinalE
+    finalSection.style.opacity = mapFinalE
 
-    const progress = scroll / maxScroll
+    // Auto-rotate globe when not being dragged, stop once map takes over
+    if (!isDragging && globeMapT < 1) rotation[0] += 0.18
 
-    targetHour = progress * 24
+    drawGlobe()
 
-    currentHour += (targetHour-currentHour) * 0.06
+    // Scroll-driven map hour — only computed once globe→map is fully done.
+    // During the crossfade the map holds at 00:00 so there's no jump.
+    // Clock timing: trigger when the paragraph body of each callout reaches
+    // the vertical midpoint of the screen (same height as the map center).
+    // This ensures the text being read matches the data being shown.
+    let mapHour = 0
+    if (globeMapT >= 1) {
+      mapSteps.forEach((s, i) => {
+        const ref     = s.querySelector('p') || s
+        const r       = ref.getBoundingClientRect()
+        const trigger = window.innerHeight * 0.5
+        if (r.top < trigger) {
+          const next = mapSteps[i + 1]
+          const stepStart = +s.dataset.hour
+          if (next) {
+            const nextRef = next.querySelector('p') || next
+            const nr      = nextRef.getBoundingClientRect()
+            const p = clamp((trigger - r.top) / (nr.top - r.top), 0, 1)
+            mapHour = stepStart + (+next.dataset.hour - stepStart) * p
+          } else {
+            mapHour = 23.99
+          }
+        }
+      })
+    }
 
-    rotateGlobe(currentHour)
+    if (globeMapT > 0) drawMap(mCtx, mapHour)
+    updateClock("mainClock", globeMapT > 0 ? mapHour : 0)
 
-    updateClock(currentHour)
+    // Final autoplay
+    if (mapFinalT > 0) {
+      finalHour = (finalHour + 0.12) % 24
+      drawMap(fCtx, finalHour)
+      updateClock("finalClock", finalHour)
+    }
 
     requestAnimationFrame(frame)
-
   }
 
   requestAnimationFrame(frame)
-
 }

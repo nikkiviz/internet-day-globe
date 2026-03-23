@@ -1,13 +1,14 @@
 import os
 import geoip2.database
-import pandas as pd
+import csv
 from collections import defaultdict
-from datetime import datetime
 
 raw_dir = "../data/carna/hostprobes_raw"
-output_file = "../data/carna/hostprobes_processed/carna_batch_1.csv"
+output_file = "../data/carna/hostprobes_processed/carna_1213141516.csv"
 
 reader = geoip2.database.Reader("../data/geoip/GeoLite2-City.mmdb")
+
+GRID_SIZE = 0.25
 
 print("Processing probe files...")
 
@@ -15,7 +16,7 @@ counts = defaultdict(int)
 
 for fname in sorted(os.listdir(raw_dir)):
 
-    if not fname.isdigit():
+    if "." in fname:
         continue
 
     path = os.path.join(raw_dir, fname)
@@ -38,7 +39,7 @@ for fname in sorted(os.listdir(raw_dir)):
 
             try:
                 timestamp = int(parts[1])
-                hour = datetime.utcfromtimestamp(timestamp).hour
+                hour = (timestamp // 3600) % 24
             except:
                 continue
 
@@ -51,29 +52,26 @@ for fname in sorted(os.listdir(raw_dir)):
                 if lat is None or lon is None:
                     continue
 
-                key = (round(lat,2), round(lon,2), hour)
+                grid_lat = round(lat / GRID_SIZE) * GRID_SIZE
+                grid_lon = round(lon / GRID_SIZE) * GRID_SIZE
+
+                key = (grid_lat, grid_lon, hour)
 
                 counts[key] += 1
 
             except:
                 continue
 
-print("Building dataset...")
+print("Writing dataset...")
 
-rows = []
+with open(output_file, "w", newline="") as f:
 
-for (lat, lon, hour), count in counts.items():
+    writer = csv.writer(f)
 
-    rows.append({
-        "lat": lat,
-        "lon": lon,
-        "hour": hour,
-        "ping_count": count
-    })
+    writer.writerow(["lat","lon","hour","ping_count"])
 
-df = pd.DataFrame(rows)
-
-df.to_csv(output_file, index=False)
+    for (lat, lon, hour), count in counts.items():
+        writer.writerow([lat, lon, hour, count])
 
 print("Done.")
-print("Rows written:", len(df))
+print("Rows written:", len(counts))

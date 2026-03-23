@@ -1,80 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>A Day in the Life of the Internet</title>
-
-<link rel="stylesheet" href="style.css">
-
-<script src="https://d3js.org/d3.v7.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Internet Day</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
-
 
 <body>
 
-<div class="layout">
+<!-- INTRO (outside main container) -->
+<section class="intro">
+  <h1>A Day in the Life of the Internet</h1>
+  <p>In 2012, an anonymous hacker assembled a botnet of 420,000 consumer devices — home routers, cameras, printers — whose owners had never changed the default password. For months, this quiet army of compromised machines probed every address on the internet, sending a simple question to each one: <em>are you there?</em></p>
+  <p>The result was a photograph of the internet that had never existed before. Not an estimate or a model — a real census of every device that responded to a ping, timestamped to the second across a full 24 hours.</p>
+  <p>This is one day from that census.</p>
+</section>
 
-  <div class="text-column">
+<!-- MAIN CONTENT CONTAINER -->
+<div class="main-container">
 
-    <h1>A Day in the Life of the Internet</h1>
+  <!-- SCROLL SECTION: narrative left + sticky viz right -->
+  <div class="scroll-section">
 
-    <section class="step">
-      <h2>Midnight</h2>
-      <p>
-      Much of the world sleeps, but streaming platforms and gaming servers
-      remain active late into the night.
-      </p>
-    </section>
+    <div class="narrative">
 
-    <section class="step">
-      <h2>Morning</h2>
-      <p>
-      As Europe wakes, productivity tools, email servers, and work platforms
-      begin to dominate internet activity.
-      </p>
-    </section>
+      <!-- Globe narrative: one block of text, globe stays sticky while this is on screen -->
+      <div class="globe-narrative">
+        <h2>A Single Moment</h2>
+        <p>For the first time in history, someone took a photograph of the entire internet. Not a diagram or an estimate — a real snapshot of every device that was online and responding to a ping at midnight UTC on a single day in 2012.</p>
+        <p>Each dot on this globe is a real device: a home router, a server, a connected camera. Its color shows how many devices responded from that location — deep blue where pings were few, climbing through green and yellow to red-hot where responses were densest.</p>
+        <p>Drag the globe to explore. This moment belongs to 00:00 UTC.</p>
+      </div>
 
-    <section class="step">
-      <h2>Afternoon</h2>
-      <p>
-      The internet becomes a workplace. Collaboration tools and cloud
-      services carry the rhythm of the global workday.
-      </p>
-    </section>
+      <!-- Map narrative: scroll steps drive the clock and data -->
+      <div class="map-narrative">
 
-    <section class="step">
-      <h2>Evening</h2>
-      <p>
-      Entertainment returns. Streaming, social media, and gaming surge
-      as people unwind after work.
-      </p>
-    </section>
+        <div class="step" data-hour="0">
+          <h2>00:00 UTC</h2>
+          <p>Midnight in London, but the internet never sleeps. East Asia is in full swing — Japan, South Korea, and coastal China burn bright. Europe and the Americas are dim, their users hours away from waking.</p>
+        </div>
 
-    <section class="step">
-      <h2>Late Night</h2>
-      <p>
-      Activity quiets again, but the network never sleeps.
-      </p>
-    </section>
+        <div class="step" data-hour="6">
+          <h2>06:00 UTC</h2>
+          <p>Dawn breaks over Europe. Devices flicker on across the UK, Germany, France, and Scandinavia. The Pacific Rim is winding down. Africa's connections remain sparse — a reflection of infrastructure, not people.</p>
+        </div>
+
+        <div class="step" data-hour="12">
+          <h2>12:00 UTC</h2>
+          <p>High noon in London, afternoon in the Middle East. Europe reaches its peak. The US east coast is well into its morning — traffic building fast. This is the closest thing the internet has to a global rush hour.</p>
+        </div>
+
+        <div class="step" data-hour="18">
+          <h2>18:00 UTC</h2>
+          <p>The Americas hit their stride. Evening internet use surges across North and South America — streaming, browsing, connecting. Europe begins to wind down. The globe finds a new center of gravity, pulled westward.</p>
+        </div>
+
+        <div class="step end" data-hour="23.99">
+          <h2>23:59 UTC</h2>
+          <p>Almost midnight again. The cycle has turned. East Asia stirs once more as the western world signs off. The internet does not sleep — it breathes.</p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Sticky viz: clock above canvas + color scale, centered in viewport -->
+    <div class="viz-column">
+      <div class="viz-sticky" id="vizSticky">
+        <div class="clock" id="mainClock">00:00 UTC</div>
+        <div class="viz-row">
+          <div class="canvas-wrap">
+            <canvas id="globeCanvas"></canvas>
+            <canvas id="mapCanvas"></canvas>
+          </div>
+          <div class="color-scale">
+            <span class="scale-label">more<br>pings</span>
+            <div class="scale-gradient"></div>
+            <span class="scale-label">fewer<br>pings</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 
-
-  <div class="viz-column">
-
-    <div id="clock">00:00 UTC</div>
-
-    <div id="globe"></div>
-
+  <!-- FINAL: autoplay section, below the scroll section -->
+  <div class="final-section" id="finalSection">
+    <div class="final-inner">
+      <div class="clock" id="finalClock">00:00 UTC</div>
+      <div class="final-viz-row">
+        <canvas id="finalCanvas"></canvas>
+        <div class="color-scale">
+          <span class="scale-label">more<br>pings</span>
+          <div class="scale-gradient"></div>
+          <span class="scale-label">fewer<br>pings</span>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
 
+<!-- OUTRO (outside main container) -->
+<section class="outro">
+  <p>The Internet Census 2012 captured roughly 9 trillion bytes of ping data — the most comprehensive map of the internet ever made. It was also conducted without the knowledge or consent of the device owners whose hardware was commandeered to do it. Its methods were illegal under most jurisdictions. Its results were published anonymously and freely.</p>
+  <p>The hacker has never been identified.</p>
+  <p>What you just watched was a single day in that dataset: 460 million unique IP addresses, aggregated by location and hour, watching the world wake up and go to sleep.</p>
+  <div class="credits">
+    <p>Data: <a href="https://internetcensus2012.github.io/InternetCensus2012/download.html" target="_blank">Internet Census 2012 / CARNA Botnet</a></p>
+    <p>Built with <a href="https://d3js.org" target="_blank">D3.js</a></p>
+  </div>
+</section>
+
 <script src="script.js"></script>
-
 </body>
-
 </html>
